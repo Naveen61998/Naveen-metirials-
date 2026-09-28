@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Materials | EventPro Supplies</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <nav class="navbar">
+    <a class="logo" href="index.html">Event<span>Pro</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a class="active" href="products.html">Materials</a>
+      <a href="services.html">Services</a>
+      <a href="contact.html">Contact</a>
+    </div>
+  </nav>
+</header>
+
+<main class="section">
+  <div class="products-heading">
+    <div>
+      <p class="tagline">OUR MATERIALS</p>
+      <h1>Choose Your Event Materials</h1>
+      <p>Click any material to interact with it, choose quantity and add it to your enquiry.</p>
+    </div>
+    <a class="cart-button" href="#enquiry">Enquiry <span id="cartCount">0</span></a>
+  </div>
+
+  <div id="productGrid" class="product-grid"></div>
+
+  <section id="enquiry" class="enquiry-section">
+    <p class="tagline">YOUR SELECTION</p>
+    <h2>Event Material Enquiry</h2>
+    <div id="cartItems" class="cart-items">
+      <p class="empty">No materials selected yet. Click a material above to add one.</p>
+    </div>
+
+    <div class="enquiry-summary">
+      <strong>Total Estimated Amount: ₹<span id="cartTotal">0</span></strong>
+      <button class="btn" onclick="sendEnquiry()">Send Enquiry</button>
+    </div>
+  </section>
+</main>
+
+<div id="productModal" class="modal">
+  <div class="modal-box">
+    <button class="close" onclick="closeProduct()">×</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<footer><p>© 2026 EventPro Supplies. All rights reserved.</p></footer>
+
+<script>
+const materials = [
+  {id:1,name:"Chairs & Tables",icon:"🪑",price:120,description:"Comfortable event chairs and sturdy tables suitable for weddings, parties, meetings and community events.",unit:"per set"},
+  {id:2,name:"Event Lighting",icon:"💡",price:500,description:"Decorative LED and event lighting for stages, halls, weddings and outdoor functions.",unit:"per set"},
+  {id:3,name:"Tents & Canopies",icon:"🎪",price:2500,description:"Temporary tents and canopies for outdoor events, functions and celebrations.",unit:"per unit"},
+  {id:4,name:"Decoration Items",icon:"🌸",price:800,description:"Decorative materials including flowers, curtains, balloons and backdrop accessories.",unit:"per package"},
+  {id:5,name:"Sound Equipment",icon:"🔊",price:1500,description:"Speakers, microphones and basic audio equipment for event programs.",unit:"per set"},
+  {id:6,name:"Stage Materials",icon:"🪵",price:2000,description:"Stage platforms, carpets, panels and other stage setup materials.",unit:"per set"}
+];
+
+let cart = JSON.parse(localStorage.getItem("eventCart") || "[]");
+let selectedProduct = null;
+let modalQty = 1;
+
+function renderProducts(){
+  const grid = document.getElementById("productGrid");
+  if(!grid) return;
+  grid.innerHTML = materials.map(p => `
+    <article class="product-card" onclick="openProduct(${p.id})">
+      <div class="product-image">${p.icon}</div>
+      <div class="product-body">
+        <h3>${p.name}</h3>
+        <p>${p.description}</p>
+        <div class="price">From ₹${p.price.toLocaleString("en-IN")} ${p.unit}</div>
+      </div>
+    </article>
+  `).join("");
+}
+
+function openProduct(id){
+  selectedProduct = materials.find(p => p.id === id);
+  modalQty = 1;
+  document.getElementById("modalContent").innerHTML = `
+    <div class="modal-product">
+      <div class="big-icon">${selectedProduct.icon}</div>
+      <h2>${selectedProduct.name}</h2>
+      <p>${selectedProduct.description}</p>
+      <div class="modal-price">₹${selectedProduct.price.toLocaleString("en-IN")} ${selectedProduct.unit}</div>
+      <div class="quantity-box">
+        <button onclick="changeModalQty(-1)">−</button>
+        <span id="modalQty">1</span>
+        <button onclick="changeModalQty(1)">+</button>
+      </div>
+      <button class="btn" onclick="addSelectedToCart()">Add to Enquiry</button>
+    </div>
+  `;
+  document.getElementById("productModal").classList.add("show");
+}
+
+function closeProduct(){
+  document.getElementById("productModal").classList.remove("show");
+}
+
+function changeModalQty(change){
+  modalQty = Math.max(1, modalQty + change);
+  document.getElementById("modalQty").textContent = modalQty;
+}
+
+function addSelectedToCart(){
+  const existing = cart.find(item => item.id === selectedProduct.id);
+  if(existing) existing.qty += modalQty;
+  else cart.push({id:selectedProduct.id,qty:modalQty});
+  saveCart();
+  closeProduct();
+  renderCart();
+  document.getElementById("enquiry").scrollIntoView({behavior:"smooth"});
+}
+
+function updateQty(id, change){
+  const item = cart.find(i => i.id === id);
+  if(!item) return;
+  item.qty += change;
+  if(item.qty <= 0) cart = cart.filter(i => i.id !== id);
+  saveCart();
+  renderCart();
+}
+
+function removeItem(id){
+  cart = cart.filter(i => i.id !== id);
+  saveCart();
+  renderCart();
+}
+
+function saveCart(){
+  localStorage.setItem("eventCart", JSON.stringify(cart));
+}
+
+function renderCart(){
+  const container = document.getElementById("cartItems");
+  if(!container) return;
+
+  const count = cart.reduce((sum,item) => sum + item.qty, 0);
+  document.getElementById("cartCount").textContent = count;
+
+  if(cart.length === 0){
+    container.innerHTML = '<p class="empty">No materials selected yet. Click a material above to add one.</p>';
+    document.getElementById("cartTotal").textContent = "0";
+    return;
+  }
+
+  let total = 0;
+  container.innerHTML = cart.map(item => {
+    const p = materials.find(x => x.id === item.id);
+    const subtotal = p.price * item.qty;
+    total += subtotal;
+    return `
+      <div class="cart-row">
+        <div><h4>${p.icon} ${p.name}</h4><small>₹${p.price.toLocaleString("en-IN")} × ${item.qty}</small></div>
+        <div class="qty-controls">
+          <button onclick="updateQty(${p.id},-1)">−</button>
+          <strong>${item.qty}</strong>
+          <button onclick="updateQty(${p.id},1)">+</button>
+        </div>
+        <strong>₹${subtotal.toLocaleString("en-IN")}</strong>
+        <button class="remove" onclick="removeItem(${p.id})">Remove</button>
+      </div>
+    `;
+  }).join("");
+
+  document.getElementById("cartTotal").textContent = total.toLocaleString("en-IN");
+}
+
+function sendEnquiry(){
+  if(cart.length === 0){
+    alert("Please select at least one material.");
+    return;
+  }
+
+  const lines = cart.map(item => {
+    const p = materials.find(x => x.id === item.id);
+    return `${p.name} - Quantity: ${item.qty}`;
+  }).join("\n");
+
+  const total = cart.reduce((sum,item) => {
+    const p = materials.find(x => x.id === item.id);
+    return sum + p.price * item.qty;
+  },0);
+
+  const message = `Hello EventPro Supplies,\n\nI would like to enquire about:\n${lines}\n\nEstimated amount: ₹${total.toLocaleString("en-IN")}\n\nPlease contact me with availability and final pricing.`;
+
+  alert(message);
+}
+
+window.addEventListener("click", function(event){
+  const modal = document.getElementById("productModal");
+  if(event.target === modal) closeProduct();
+});
+
+renderProducts();
+renderCart();
+
+</script>
+</body>
+</html>
